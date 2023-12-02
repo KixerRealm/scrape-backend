@@ -38,5 +38,5 @@ type User struct {
 	Email     string
 	Password  string
 	Username  string
-	ApiKey    sql.NullString
+	ApiKey    string
 }

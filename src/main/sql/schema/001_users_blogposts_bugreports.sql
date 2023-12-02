@@ -3,12 +3,14 @@
 create table users
 (
     id         uuid primary key,
-    created_at timestamp not null,
-    updated_at timestamp not null,
-    email      text      not null,
-    password   text      not null,
-    username   text      not null,
-    api_key    text
+    created_at timestamp          not null,
+    updated_at timestamp          not null,
+    email      text               not null,
+    password   text               not null,
+    username   text               not null,
+    api_key    varchar(64) unique not null default (
+        encode(sha256(random()::text::bytea), 'hex')
+        )
 );
 
 CREATE table blog_posts
@@ -34,6 +36,6 @@ CREATE table bug_reports
 );
 
 -- +goose Down
-drop table users;
 drop table blog_posts;
 drop table bug_reports;
+drop table users;
