@@ -7,16 +7,15 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 const createBlogPost = `-- name: CreateBlogPost :one
-INSERT INTO blog_posts (id, created_at, updated_at, title, description, image_filename, user_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, created_at, updated_at, title, description, image_filename, user_id
+insert into blog_posts (id, created_at, updated_at, title, description, image_filename, user_id)
+values ($1, $2, $3, $4, $5, $6, $7)
+returning id, created_at, updated_at, title, description, image_filename, user_id
 `
 
 type CreateBlogPostParams struct {
@@ -24,8 +23,8 @@ type CreateBlogPostParams struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	Title         string
-	Description   sql.NullString
-	ImageFilename sql.NullString
+	Description   string
+	ImageFilename string
 	UserID        uuid.UUID
 }
 
@@ -53,11 +52,118 @@ func (q *Queries) CreateBlogPost(ctx context.Context, arg CreateBlogPostParams) 
 }
 
 const getBlogPosts = `-- name: GetBlogPosts :many
-SELECT id, created_at, updated_at, title, description, image_filename, user_id FROM blog_posts
+select id, created_at, updated_at, title, description, image_filename, user_id from blog_posts
 `
 
 func (q *Queries) GetBlogPosts(ctx context.Context) ([]BlogPost, error) {
 	rows, err := q.db.QueryContext(ctx, getBlogPosts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BlogPost
+	for rows.Next() {
+		var i BlogPost
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+			&i.Description,
+			&i.ImageFilename,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBlogPostsByCreatedAt = `-- name: GetBlogPostsByCreatedAt :many
+with WeeklyAggregation as (
+    select
+        extract(week from created_at) as week_number,
+        extract(year from created_at) as year,
+        count(*) as post_count
+    from
+        blog_posts
+    group by
+        week_number, year
+)
+
+select
+    bp.id, bp.created_at, bp.updated_at, bp.title, bp.description, bp.image_filename, bp.user_id,
+    wa.week_number,
+    wa.year,
+    wa.post_count
+from
+    blog_posts bp
+        join
+    WeeklyAggregation wa on extract(week from bp.created_at) = wa.week_number and extract(year from bp.created_at) = wa.year
+order by
+    wa.year, wa.week_number, bp.created_at
+`
+
+type GetBlogPostsByCreatedAtRow struct {
+	ID            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Title         string
+	Description   string
+	ImageFilename string
+	UserID        uuid.UUID
+	WeekNumber    string
+	Year          string
+	PostCount     int64
+}
+
+func (q *Queries) GetBlogPostsByCreatedAt(ctx context.Context) ([]GetBlogPostsByCreatedAtRow, error) {
+	rows, err := q.db.QueryContext(ctx, getBlogPostsByCreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBlogPostsByCreatedAtRow
+	for rows.Next() {
+		var i GetBlogPostsByCreatedAtRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+			&i.Description,
+			&i.ImageFilename,
+			&i.UserID,
+			&i.WeekNumber,
+			&i.Year,
+			&i.PostCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBlogPostsByUser = `-- name: GetBlogPostsByUser :many
+select id, created_at, updated_at, title, description, image_filename, user_id from blog_posts where user_id = $1
+`
+
+func (q *Queries) GetBlogPostsByUser(ctx context.Context, userID uuid.UUID) ([]BlogPost, error) {
+	rows, err := q.db.QueryContext(ctx, getBlogPostsByUser, userID)
 	if err != nil {
 		return nil, err
 	}

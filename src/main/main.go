@@ -53,7 +53,14 @@ func main() {
 
 	v1Router := chi.NewRouter()
 	v1Router.Get("/err", handlerErr)
-	v1Router.Post("/users", apiCfg.handlerCreateUser)
+	v1Router.Post("/users/register", apiCfg.registerUserHandler)
+	v1Router.Post("/users/login", apiCfg.loginUserHandler)
+	v1Router.Post("/blog-posts/create", apiCfg.middlewareAuth(apiCfg.handlerCreateBlogPost))
+	v1Router.Post("/blog-posts", apiCfg.middlewareAuth(apiCfg.handlerGetBlogPostsByUser))
+	v1Router.Post("/bug-reports/create", apiCfg.middlewareAuth(apiCfg.handlerCreateBugReport))
+	v1Router.Post("/bug-reports", apiCfg.middlewareAuth(apiCfg.handlerGetBugReportsByUser))
+	v1Router.Get("/patch-notes", apiCfg.handlerGetPatchNotes)
+	//v1Router.Post("/blog-posts", apiCfg.handlerGetAllBlogPosts)
 	router.Mount("/v1", v1Router)
 
 	srv := &http.Server{
