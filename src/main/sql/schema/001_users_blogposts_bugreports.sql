@@ -8,7 +8,7 @@ create table users
     email      text      not null,
     password   text      not null,
     username   text      not null,
-    api_key    text
+    token      text unique not null
 );
 
 CREATE table blog_posts
@@ -17,8 +17,8 @@ CREATE table blog_posts
     created_at     timestamp not null,
     updated_at     timestamp not null,
     title          text      not null,
-    description    text,
-    image_filename text,
+    description    text      not null,
+    image_filename text      not null,
     user_id        uuid      not null references users (id) on delete cascade
 );
 
@@ -28,12 +28,12 @@ CREATE table bug_reports
     created_at     timestamp not null,
     updated_at     timestamp not null,
     title          text      not null,
-    description    text,
-    image_filename text,
+    description    text      not null,
+    image_filename text      not null,
     user_id        uuid      not null references users (id) on delete cascade
 );
 
 -- +goose Down
-drop table users;
 drop table blog_posts;
 drop table bug_reports;
+drop table users;

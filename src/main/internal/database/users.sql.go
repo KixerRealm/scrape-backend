@@ -13,10 +13,10 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-insert into users (id, created_at, updated_at, email, password, username, api_key)
+insert into users (id, created_at, updated_at, email, password, username, token)
 values ($1, $2, $3, $4, $5, $6,
-        encode(sha256(random()::text::bytea), 'hex'))
-returning id, created_at, updated_at, email, password, username, api_key
+        '')
+returning id, created_at, updated_at, email, password, username, token
 `
 
 type CreateUserParams struct {
@@ -45,7 +45,59 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.Password,
 		&i.Username,
-		&i.ApiKey,
+		&i.Token,
 	)
 	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+select id, created_at, updated_at, email, password, username, token from users where email = $1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.Password,
+		&i.Username,
+		&i.Token,
+	)
+	return i, err
+}
+
+const getUserByToken = `-- name: GetUserByToken :one
+SELECT id, created_at, updated_at, email, password, username, token FROM users WHERE token = $1
+`
+
+func (q *Queries) GetUserByToken(ctx context.Context, token string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByToken, token)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.Password,
+		&i.Username,
+		&i.Token,
+	)
+	return i, err
+}
+
+const updateUserToken = `-- name: UpdateUserToken :exec
+update users set token = $2 where id = $1
+`
+
+type UpdateUserTokenParams struct {
+	ID    uuid.UUID
+	Token string
+}
+
+func (q *Queries) UpdateUserToken(ctx context.Context, arg UpdateUserTokenParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserToken, arg.ID, arg.Token)
+	return err
 }

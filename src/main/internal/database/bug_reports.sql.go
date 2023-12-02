@@ -7,7 +7,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,8 +23,8 @@ type CreateBugReportParams struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	Title         string
-	Description   sql.NullString
-	ImageFilename sql.NullString
+	Description   string
+	ImageFilename string
 	UserID        uuid.UUID
 }
 
@@ -58,6 +57,41 @@ SELECT id, created_at, updated_at, title, description, image_filename, user_id F
 
 func (q *Queries) GetBugReports(ctx context.Context) ([]BugReport, error) {
 	rows, err := q.db.QueryContext(ctx, getBugReports)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BugReport
+	for rows.Next() {
+		var i BugReport
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+			&i.Description,
+			&i.ImageFilename,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBugReportsByUser = `-- name: GetBugReportsByUser :many
+select id, created_at, updated_at, title, description, image_filename, user_id from bug_reports where user_id = $1
+`
+
+func (q *Queries) GetBugReportsByUser(ctx context.Context, userID uuid.UUID) ([]BugReport, error) {
+	rows, err := q.db.QueryContext(ctx, getBugReportsByUser, userID)
 	if err != nil {
 		return nil, err
 	}

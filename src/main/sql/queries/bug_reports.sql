@@ -5,3 +5,6 @@ RETURNING *;
 
 -- name: GetBugReports :many
 SELECT * FROM bug_reports;
+
+-- name: GetBugReportsByUser :many
+select * from bug_reports where user_id = $1;

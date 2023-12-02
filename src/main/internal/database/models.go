@@ -5,7 +5,6 @@
 package database
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,8 +15,8 @@ type BlogPost struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	Title         string
-	Description   sql.NullString
-	ImageFilename sql.NullString
+	Description   string
+	ImageFilename string
 	UserID        uuid.UUID
 }
 
@@ -26,8 +25,8 @@ type BugReport struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	Title         string
-	Description   sql.NullString
-	ImageFilename sql.NullString
+	Description   string
+	ImageFilename string
 	UserID        uuid.UUID
 }
 
@@ -38,5 +37,5 @@ type User struct {
 	Email     string
 	Password  string
 	Username  string
-	ApiKey    sql.NullString
+	Token     string
 }
