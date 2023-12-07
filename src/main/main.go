@@ -60,6 +60,7 @@ func main() {
 	v1Router.Post("/bug-reports/create", apiCfg.middlewareAuth(apiCfg.handlerCreateBugReport))
 	v1Router.Post("/bug-reports", apiCfg.middlewareAuth(apiCfg.handlerGetBugReportsByUser))
 	v1Router.Get("/patch-notes", apiCfg.handlerGetPatchNotes)
+	v1Router.Post("/files/create", apiCfg.handlerCreateFile)
 	//v1Router.Post("/blog-posts", apiCfg.handlerGetAllBlogPosts)
 	router.Mount("/v1", v1Router)
 

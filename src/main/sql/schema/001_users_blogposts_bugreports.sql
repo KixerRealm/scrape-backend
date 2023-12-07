@@ -11,7 +11,7 @@ create table users
     token      text unique not null
 );
 
-CREATE table blog_posts
+create table blog_posts
 (
     id             uuid primary key,
     created_at     timestamp not null,
@@ -22,7 +22,7 @@ CREATE table blog_posts
     user_id        uuid      not null references users (id) on delete cascade
 );
 
-CREATE table bug_reports
+create table bug_reports
 (
     id             uuid primary key,
     created_at     timestamp not null,
@@ -31,9 +31,17 @@ CREATE table bug_reports
     description    text      not null,
     image_filename text      not null,
     user_id        uuid      not null references users (id) on delete cascade
+);
+
+create table files
+(
+    id                  uuid primary key,
+    file_name           text not null,
+    folder_name         text not null
 );
 
 -- +goose Down
 drop table blog_posts;
 drop table bug_reports;
 drop table users;
+drop table files;
