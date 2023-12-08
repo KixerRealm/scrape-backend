@@ -1,6 +1,6 @@
 -- name: CreateBlogPost :one
-insert into blog_posts (id, created_at, updated_at, title, description, image_filename, user_id)
-values ($1, $2, $3, $4, $5, $6, $7)
+insert into blog_posts (id, created_at, updated_at, title, description, user_id)
+values ($1, $2, $3, $4, $5, $6)
 returning *;
 
 -- name: GetBlogPosts :many
@@ -32,3 +32,8 @@ from
     WeeklyAggregation wa on extract(week from bp.created_at) = wa.week_number and extract(year from bp.created_at) = wa.year
 order by
     wa.week_number;
+
+-- name: CreateBlogPostFile :one
+insert into blog_post_files (blog_post_id, file_id)
+values ($1, $2)
+returning *;

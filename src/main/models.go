@@ -40,13 +40,12 @@ type BlogPost struct {
 
 func databaseBlogPostToBlogPost(dbBlogPost database.BlogPost) BlogPost {
 	return BlogPost{
-		ID:            dbBlogPost.ID,
-		CreatedAt:     dbBlogPost.CreatedAt,
-		UpdatedAt:     dbBlogPost.UpdatedAt,
-		Title:         dbBlogPost.Title,
-		Description:   dbBlogPost.Description,
-		ImageFilename: dbBlogPost.ImageFilename,
-		UserID:        dbBlogPost.UserID,
+		ID:          dbBlogPost.ID,
+		CreatedAt:   dbBlogPost.CreatedAt,
+		UpdatedAt:   dbBlogPost.UpdatedAt,
+		Title:       dbBlogPost.Title,
+		Description: dbBlogPost.Description,
+		UserID:      dbBlogPost.UserID,
 	}
 }
 
@@ -70,13 +69,12 @@ type BugReport struct {
 
 func databaseBugReportToBugReport(dbBugReport database.BugReport) BugReport {
 	return BugReport{
-		ID:            dbBugReport.ID,
-		CreatedAt:     dbBugReport.CreatedAt,
-		UpdatedAt:     dbBugReport.UpdatedAt,
-		Title:         dbBugReport.Title,
-		Description:   dbBugReport.Description,
-		ImageFilename: dbBugReport.ImageFilename,
-		UserID:        dbBugReport.UserID,
+		ID:          dbBugReport.ID,
+		CreatedAt:   dbBugReport.CreatedAt,
+		UpdatedAt:   dbBugReport.UpdatedAt,
+		Title:       dbBugReport.Title,
+		Description: dbBugReport.Description,
+		UserID:      dbBugReport.UserID,
 	}
 }
 
@@ -101,14 +99,13 @@ type PatchNote struct {
 
 func databasePatchNoteToPatchNote(dbPatchNote database.GetBlogPostsByCreatedAtRow) PatchNote {
 	return PatchNote{
-		ID:            dbPatchNote.ID,
-		CreatedAt:     dbPatchNote.CreatedAt,
-		UpdatedAt:     dbPatchNote.UpdatedAt,
-		Title:         dbPatchNote.Title,
-		Description:   dbPatchNote.Description,
-		ImageFilename: dbPatchNote.ImageFilename,
-		UserID:        dbPatchNote.UserID,
-		WeekNumber:    dbPatchNote.WeekNumber,
+		ID:          dbPatchNote.ID,
+		CreatedAt:   dbPatchNote.CreatedAt,
+		UpdatedAt:   dbPatchNote.UpdatedAt,
+		Title:       dbPatchNote.Title,
+		Description: dbPatchNote.Description,
+		UserID:      dbPatchNote.UserID,
+		WeekNumber:  dbPatchNote.WeekNumber,
 	}
 }
 
