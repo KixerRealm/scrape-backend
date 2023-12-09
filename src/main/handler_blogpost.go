@@ -59,27 +59,27 @@ func (apiCfg *apiConfig) handlerCreateBlogPost(w http.ResponseWriter, r *http.Re
 }
 
 func (apiCfg *apiConfig) handlerGetBlogPostsByUser(w http.ResponseWriter, r *http.Request, user database.User) {
-	blogPosts, err := apiCfg.DB.GetBlogPostsByUser(r.Context(), user.ID)
+	blogPosts, err := apiCfg.DB.GetBlogPostsByUserWithFiles(r.Context(), user.ID)
 	if err != nil {
-		respondWithError(w, 400, fmt.Sprintf("Couldn't get feed follows: %s", err))
+		respondWithError(w, 400, fmt.Sprintf("Couldn't get blog posts by user: %s", err))
 		return
 	}
-	respondWithJSON(w, 200, databaseBlogPostsToBlogPosts(blogPosts))
+	respondWithJSON(w, 200, apiCfg.databaseBlogPostsWithFilesToBlogPostsWithFiles(blogPosts, r))
 }
 
 func (apiCfg *apiConfig) handlerGetAllBlogPosts(w http.ResponseWriter, r *http.Request) {
 	blogPosts, err := apiCfg.DB.GetBlogPosts(r.Context())
 	if err != nil {
-		respondWithError(w, 400, fmt.Sprintf("Couldn't get feed follows: %s", err))
+		respondWithError(w, 400, fmt.Sprintf("Couldn't get blog posts: %s", err))
 		return
 	}
-	respondWithJSON(w, 200, databaseBlogPostsToBlogPosts(blogPosts))
+	respondWithJSON(w, 200, apiCfg.databaseAllBlogPostsWithFilesToAllBlogPostsWithFiles(blogPosts, r))
 }
 
 func (apiCfg *apiConfig) handlerGetPatchNotes(w http.ResponseWriter, r *http.Request) {
 	blogPosts, err := apiCfg.DB.GetBlogPostsByCreatedAt(r.Context())
 	if err != nil {
-		respondWithError(w, 400, fmt.Sprintf("Couldn't get feed follows: %s", err))
+		respondWithError(w, 400, fmt.Sprintf("Couldn't get patch notes: %s", err))
 		return
 	}
 	respondWithJSON(w, 200, databasePatchNotesToPatchNotes(blogPosts))

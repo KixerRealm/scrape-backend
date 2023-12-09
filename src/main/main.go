@@ -75,12 +75,13 @@ func main() {
 	v1Router.Post("/users/register", apiCfg.registerUserHandler)
 	v1Router.Post("/users/login", apiCfg.loginUserHandler)
 	v1Router.Post("/blog-posts/create", apiCfg.middlewareAuth(apiCfg.handlerCreateBlogPost))
-	v1Router.Post("/blog-posts", apiCfg.middlewareAuth(apiCfg.handlerGetBlogPostsByUser))
+	v1Router.Post("/my-blog-posts", apiCfg.middlewareAuth(apiCfg.handlerGetBlogPostsByUser))
+	v1Router.Post("/all-blog-posts", apiCfg.handlerGetAllBlogPosts)
 	v1Router.Post("/bug-reports/create", apiCfg.middlewareAuth(apiCfg.handlerCreateBugReport))
-	v1Router.Post("/bug-reports", apiCfg.middlewareAuth(apiCfg.handlerGetBugReportsByUser))
+	v1Router.Post("/my-bug-reports", apiCfg.middlewareAuth(apiCfg.handlerGetBugReportsByUser))
+	v1Router.Post("/all-bug-reports", apiCfg.handlerGetAllBugReports)
 	v1Router.Get("/patch-notes", apiCfg.handlerGetPatchNotes)
 	v1Router.Post("/files/create", apiCfg.handlerCreateFile)
-	//v1Router.Post("/blog-posts", apiCfg.handlerGetAllBlogPosts)
 	router.Mount("/v1", v1Router)
 
 	srv := &http.Server{

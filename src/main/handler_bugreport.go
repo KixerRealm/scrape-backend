@@ -40,7 +40,7 @@ func (apiCfg *apiConfig) handlerCreateBugReport(w http.ResponseWriter, r *http.R
 		UserID:      user.ID,
 	})
 	if err != nil {
-		respondWithError(w, 400, fmt.Sprintf("Couldn't create feed follow: %s", err))
+		respondWithError(w, 400, fmt.Sprintf("Couldn't create bug report: %s", err))
 		return
 	}
 
@@ -66,12 +66,12 @@ func (apiCfg *apiConfig) handlerCreateBugReport(w http.ResponseWriter, r *http.R
 }
 
 func (apiCfg *apiConfig) handlerGetBugReportsByUser(w http.ResponseWriter, r *http.Request, user database.User) {
-	bugReports, err := apiCfg.DB.GetBugReportsByUser(r.Context(), user.ID)
+	bugReports, err := apiCfg.DB.GetBugReportsByUserWithFiles(r.Context(), user.ID)
 	if err != nil {
 		respondWithError(w, 400, fmt.Sprintf("Couldn't get feed follows: %s", err))
 		return
 	}
-	respondWithJSON(w, 200, databaseBugReportsToBugReports(bugReports))
+	respondWithJSON(w, 200, apiCfg.databaseBugReportsWithFilesToBugReportsWithFiles(bugReports, r))
 }
 
 func (apiCfg *apiConfig) handlerGetAllBugReports(w http.ResponseWriter, r *http.Request) {
@@ -80,13 +80,13 @@ func (apiCfg *apiConfig) handlerGetAllBugReports(w http.ResponseWriter, r *http.
 		respondWithError(w, 400, fmt.Sprintf("Couldn't get feed follows: %s", err))
 		return
 	}
-	respondWithJSON(w, 200, databaseBugReportsToBugReports(bugReports))
+	respondWithJSON(w, 200, apiCfg.databaseAllBugReportsWithFilesToAllBugReportsWithFiles(bugReports, r))
 }
 
 func createNewBugIssue(bugReport BugReport) error {
 
 	apiURL := "https://api.linear.app/graphql"
-	accessToken := "enter-linear-API-key"
+	accessToken := "lin_api_cdpJzemGZc04Glc1O4hBap4tdbpFGven7kfxm6R9"
 
 	var wg sync.WaitGroup
 
@@ -145,7 +145,6 @@ func createNewBugIssue(bugReport BugReport) error {
 		close(stateIDCh)
 	}()
 
-	// Retrieve results from channels
 	teamID := <-teamIDCh
 	projectID := <-projectIDCh
 	labelID := <-labelIDCh

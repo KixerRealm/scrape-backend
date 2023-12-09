@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"golang.org/x/crypto/bcrypt"
+	"io"
 	"net/http"
 	"scrape-backend/src/main/internal/database"
 )
@@ -21,13 +22,13 @@ func compareHashPassword(password, hash string) bool {
 	return err == nil
 }
 
-type File []struct {
+type FileRequest []struct {
 	Filename   string `json:"file_name"`
 	FolderName string `json:"folder_name"`
 	Content    string `json:"content"`
 }
 
-func (apiCfg *apiConfig) saveFile(files File, w http.ResponseWriter, r *http.Request) []uuid.UUID {
+func (apiCfg *apiConfig) saveFile(files FileRequest, w http.ResponseWriter, r *http.Request) []uuid.UUID {
 	var fileIDs []uuid.UUID
 	for _, fileParam := range files {
 		decodedBytes, err := base64.StdEncoding.DecodeString(fileParam.Content)
@@ -56,4 +57,20 @@ func (apiCfg *apiConfig) saveFile(files File, w http.ResponseWriter, r *http.Req
 		fileIDs = append(fileIDs, fileID)
 	}
 	return fileIDs
+}
+
+func (apiCfg *apiConfig) getFile(r *http.Request, filename string) string {
+	object, err := apiCfg.Minio.GetObject(r.Context(), "files", filename, minio.GetObjectOptions{})
+	if err != nil {
+		fmt.Println("Error getting object:", err)
+	}
+
+	objectContent, err := io.ReadAll(object)
+	if err != nil {
+		fmt.Println("Error reading object content:", err)
+	}
+	defer object.Close()
+
+	base64String := base64.StdEncoding.EncodeToString(objectContent)
+	return base64String
 }

@@ -67,25 +67,52 @@ func (q *Queries) CreateBlogPostFile(ctx context.Context, arg CreateBlogPostFile
 }
 
 const getBlogPosts = `-- name: GetBlogPosts :many
-select id, created_at, updated_at, title, description, user_id from blog_posts
+select
+    blog_posts.id as blog_post_id,
+    blog_posts.created_at as blog_post_created_at,
+    blog_posts.updated_at as blog_post_updated_at,
+    blog_posts.title as blog_post_title,
+    blog_posts.description as blog_post_description,
+    files.id as file_id,
+    files.file_name,
+    files.folder_name
+from
+    blog_posts
+        join
+    blog_post_files on blog_posts.id = blog_post_files.blog_post_id
+        join
+    files on blog_post_files.file_id = files.id
 `
 
-func (q *Queries) GetBlogPosts(ctx context.Context) ([]BlogPost, error) {
+type GetBlogPostsRow struct {
+	BlogPostID          uuid.UUID
+	BlogPostCreatedAt   time.Time
+	BlogPostUpdatedAt   time.Time
+	BlogPostTitle       string
+	BlogPostDescription string
+	FileID              uuid.UUID
+	FileName            string
+	FolderName          string
+}
+
+func (q *Queries) GetBlogPosts(ctx context.Context) ([]GetBlogPostsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getBlogPosts)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BlogPost
+	var items []GetBlogPostsRow
 	for rows.Next() {
-		var i BlogPost
+		var i GetBlogPostsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Description,
-			&i.UserID,
+			&i.BlogPostID,
+			&i.BlogPostCreatedAt,
+			&i.BlogPostUpdatedAt,
+			&i.BlogPostTitle,
+			&i.BlogPostDescription,
+			&i.FileID,
+			&i.FileName,
+			&i.FolderName,
 		); err != nil {
 			return nil, err
 		}
@@ -170,27 +197,86 @@ func (q *Queries) GetBlogPostsByCreatedAt(ctx context.Context) ([]GetBlogPostsBy
 	return items, nil
 }
 
-const getBlogPostsByUser = `-- name: GetBlogPostsByUser :many
-select id, created_at, updated_at, title, description, user_id from blog_posts where user_id = $1
+const getBlogPostsByUserWithFiles = `-- name: GetBlogPostsByUserWithFiles :many
+select
+    blog_posts.id as blog_post_id,
+    blog_posts.created_at as blog_post_created_at,
+    blog_posts.updated_at as blog_post_updated_at,
+    blog_posts.title as blog_post_title,
+    blog_posts.description as blog_post_description,
+    files.id as file_id,
+    files.file_name,
+    files.folder_name
+from
+    blog_posts
+        join
+    blog_post_files on blog_posts.id = blog_post_files.blog_post_id
+        join
+    files on blog_post_files.file_id = files.id
+where
+        blog_posts.user_id = $1
 `
 
-func (q *Queries) GetBlogPostsByUser(ctx context.Context, userID uuid.UUID) ([]BlogPost, error) {
-	rows, err := q.db.QueryContext(ctx, getBlogPostsByUser, userID)
+type GetBlogPostsByUserWithFilesRow struct {
+	BlogPostID          uuid.UUID
+	BlogPostCreatedAt   time.Time
+	BlogPostUpdatedAt   time.Time
+	BlogPostTitle       string
+	BlogPostDescription string
+	FileID              uuid.UUID
+	FileName            string
+	FolderName          string
+}
+
+func (q *Queries) GetBlogPostsByUserWithFiles(ctx context.Context, userID uuid.UUID) ([]GetBlogPostsByUserWithFilesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getBlogPostsByUserWithFiles, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BlogPost
+	var items []GetBlogPostsByUserWithFilesRow
 	for rows.Next() {
-		var i BlogPost
+		var i GetBlogPostsByUserWithFilesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Description,
-			&i.UserID,
+			&i.BlogPostID,
+			&i.BlogPostCreatedAt,
+			&i.BlogPostUpdatedAt,
+			&i.BlogPostTitle,
+			&i.BlogPostDescription,
+			&i.FileID,
+			&i.FileName,
+			&i.FolderName,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFilesByBlogPostID = `-- name: GetFilesByBlogPostID :many
+select files.id, files.file_name, files.folder_name
+from blog_post_files
+join files on blog_post_files.file_id = files.id
+where blog_post_files.blog_post_id = $1
+`
+
+func (q *Queries) GetFilesByBlogPostID(ctx context.Context, blogPostID uuid.UUID) ([]File, error) {
+	rows, err := q.db.QueryContext(ctx, getFilesByBlogPostID, blogPostID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []File
+	for rows.Next() {
+		var i File
+		if err := rows.Scan(&i.ID, &i.FileName, &i.FolderName); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -67,25 +67,52 @@ func (q *Queries) CreateBugReportFile(ctx context.Context, arg CreateBugReportFi
 }
 
 const getBugReports = `-- name: GetBugReports :many
-SELECT id, created_at, updated_at, title, description, user_id FROM bug_reports
+select
+    bug_reports.id as bug_report_id,
+    bug_reports.created_at as bug_report_created_at,
+    bug_reports.updated_at as bug_report_updated_at,
+    bug_reports.title as bug_report_title,
+    bug_reports.description as bug_report_description,
+    files.id as file_id,
+    files.file_name,
+    files.folder_name
+from
+    bug_reports
+        join
+    bug_report_files on bug_reports.id = bug_report_files.bug_report_id
+        join
+    files on bug_report_files.file_id = files.id
 `
 
-func (q *Queries) GetBugReports(ctx context.Context) ([]BugReport, error) {
+type GetBugReportsRow struct {
+	BugReportID          uuid.UUID
+	BugReportCreatedAt   time.Time
+	BugReportUpdatedAt   time.Time
+	BugReportTitle       string
+	BugReportDescription string
+	FileID               uuid.UUID
+	FileName             string
+	FolderName           string
+}
+
+func (q *Queries) GetBugReports(ctx context.Context) ([]GetBugReportsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getBugReports)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BugReport
+	var items []GetBugReportsRow
 	for rows.Next() {
-		var i BugReport
+		var i GetBugReportsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Description,
-			&i.UserID,
+			&i.BugReportID,
+			&i.BugReportCreatedAt,
+			&i.BugReportUpdatedAt,
+			&i.BugReportTitle,
+			&i.BugReportDescription,
+			&i.FileID,
+			&i.FileName,
+			&i.FolderName,
 		); err != nil {
 			return nil, err
 		}
@@ -100,26 +127,55 @@ func (q *Queries) GetBugReports(ctx context.Context) ([]BugReport, error) {
 	return items, nil
 }
 
-const getBugReportsByUser = `-- name: GetBugReportsByUser :many
-select id, created_at, updated_at, title, description, user_id from bug_reports where user_id = $1
+const getBugReportsByUserWithFiles = `-- name: GetBugReportsByUserWithFiles :many
+select
+    bug_reports.id as bug_report_id,
+    bug_reports.created_at as bug_report_created_at,
+    bug_reports.updated_at as bug_report_updated_at,
+    bug_reports.title as bug_report_title,
+    bug_reports.description as bug_report_description,
+    files.id as file_id,
+    files.file_name,
+    files.folder_name
+from
+    bug_reports
+        join
+    bug_report_files on bug_reports.id = bug_report_files.bug_report_id
+        join
+    files on bug_report_files.file_id = files.id
+where
+        bug_reports.user_id = $1
 `
 
-func (q *Queries) GetBugReportsByUser(ctx context.Context, userID uuid.UUID) ([]BugReport, error) {
-	rows, err := q.db.QueryContext(ctx, getBugReportsByUser, userID)
+type GetBugReportsByUserWithFilesRow struct {
+	BugReportID          uuid.UUID
+	BugReportCreatedAt   time.Time
+	BugReportUpdatedAt   time.Time
+	BugReportTitle       string
+	BugReportDescription string
+	FileID               uuid.UUID
+	FileName             string
+	FolderName           string
+}
+
+func (q *Queries) GetBugReportsByUserWithFiles(ctx context.Context, userID uuid.UUID) ([]GetBugReportsByUserWithFilesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getBugReportsByUserWithFiles, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BugReport
+	var items []GetBugReportsByUserWithFilesRow
 	for rows.Next() {
-		var i BugReport
+		var i GetBugReportsByUserWithFilesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Description,
-			&i.UserID,
+			&i.BugReportID,
+			&i.BugReportCreatedAt,
+			&i.BugReportUpdatedAt,
+			&i.BugReportTitle,
+			&i.BugReportDescription,
+			&i.FileID,
+			&i.FileName,
+			&i.FolderName,
 		); err != nil {
 			return nil, err
 		}
