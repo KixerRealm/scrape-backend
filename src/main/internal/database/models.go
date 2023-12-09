@@ -11,23 +11,37 @@ import (
 )
 
 type BlogPost struct {
-	ID            uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Title         string
-	Description   string
-	ImageFilename string
-	UserID        uuid.UUID
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Title       string
+	Description string
+	UserID      uuid.UUID
+}
+
+type BlogPostFile struct {
+	BlogPostID uuid.UUID
+	FileID     uuid.UUID
 }
 
 type BugReport struct {
-	ID            uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Title         string
-	Description   string
-	ImageFilename string
-	UserID        uuid.UUID
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Title       string
+	Description string
+	UserID      uuid.UUID
+}
+
+type BugReportFile struct {
+	BugReportID uuid.UUID
+	FileID      uuid.UUID
+}
+
+type File struct {
+	ID         uuid.UUID
+	FileName   string
+	FolderName string
 }
 
 type User struct {

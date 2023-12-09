@@ -13,19 +13,18 @@ import (
 )
 
 const createBlogPost = `-- name: CreateBlogPost :one
-insert into blog_posts (id, created_at, updated_at, title, description, image_filename, user_id)
-values ($1, $2, $3, $4, $5, $6, $7)
-returning id, created_at, updated_at, title, description, image_filename, user_id
+insert into blog_posts (id, created_at, updated_at, title, description, user_id)
+values ($1, $2, $3, $4, $5, $6)
+returning id, created_at, updated_at, title, description, user_id
 `
 
 type CreateBlogPostParams struct {
-	ID            uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Title         string
-	Description   string
-	ImageFilename string
-	UserID        uuid.UUID
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Title       string
+	Description string
+	UserID      uuid.UUID
 }
 
 func (q *Queries) CreateBlogPost(ctx context.Context, arg CreateBlogPostParams) (BlogPost, error) {
@@ -35,7 +34,6 @@ func (q *Queries) CreateBlogPost(ctx context.Context, arg CreateBlogPostParams) 
 		arg.UpdatedAt,
 		arg.Title,
 		arg.Description,
-		arg.ImageFilename,
 		arg.UserID,
 	)
 	var i BlogPost
@@ -45,33 +43,76 @@ func (q *Queries) CreateBlogPost(ctx context.Context, arg CreateBlogPostParams) 
 		&i.UpdatedAt,
 		&i.Title,
 		&i.Description,
-		&i.ImageFilename,
 		&i.UserID,
 	)
 	return i, err
 }
 
-const getBlogPosts = `-- name: GetBlogPosts :many
-select id, created_at, updated_at, title, description, image_filename, user_id from blog_posts
+const createBlogPostFile = `-- name: CreateBlogPostFile :one
+insert into blog_post_files (blog_post_id, file_id)
+values ($1, $2)
+returning blog_post_id, file_id
 `
 
-func (q *Queries) GetBlogPosts(ctx context.Context) ([]BlogPost, error) {
+type CreateBlogPostFileParams struct {
+	BlogPostID uuid.UUID
+	FileID     uuid.UUID
+}
+
+func (q *Queries) CreateBlogPostFile(ctx context.Context, arg CreateBlogPostFileParams) (BlogPostFile, error) {
+	row := q.db.QueryRowContext(ctx, createBlogPostFile, arg.BlogPostID, arg.FileID)
+	var i BlogPostFile
+	err := row.Scan(&i.BlogPostID, &i.FileID)
+	return i, err
+}
+
+const getBlogPosts = `-- name: GetBlogPosts :many
+select
+    blog_posts.id as blog_post_id,
+    blog_posts.created_at as blog_post_created_at,
+    blog_posts.updated_at as blog_post_updated_at,
+    blog_posts.title as blog_post_title,
+    blog_posts.description as blog_post_description,
+    files.id as file_id,
+    files.file_name,
+    files.folder_name
+from
+    blog_posts
+        join
+    blog_post_files on blog_posts.id = blog_post_files.blog_post_id
+        join
+    files on blog_post_files.file_id = files.id
+`
+
+type GetBlogPostsRow struct {
+	BlogPostID          uuid.UUID
+	BlogPostCreatedAt   time.Time
+	BlogPostUpdatedAt   time.Time
+	BlogPostTitle       string
+	BlogPostDescription string
+	FileID              uuid.UUID
+	FileName            string
+	FolderName          string
+}
+
+func (q *Queries) GetBlogPosts(ctx context.Context) ([]GetBlogPostsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getBlogPosts)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BlogPost
+	var items []GetBlogPostsRow
 	for rows.Next() {
-		var i BlogPost
+		var i GetBlogPostsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Description,
-			&i.ImageFilename,
-			&i.UserID,
+			&i.BlogPostID,
+			&i.BlogPostCreatedAt,
+			&i.BlogPostUpdatedAt,
+			&i.BlogPostTitle,
+			&i.BlogPostDescription,
+			&i.FileID,
+			&i.FileName,
+			&i.FolderName,
 		); err != nil {
 			return nil, err
 		}
@@ -99,7 +140,7 @@ with WeeklyAggregation as (
 )
 
 select
-    bp.id, bp.created_at, bp.updated_at, bp.title, bp.description, bp.image_filename, bp.user_id,
+    bp.id, bp.created_at, bp.updated_at, bp.title, bp.description, bp.user_id,
     wa.week_number,
     wa.year,
     wa.post_count
@@ -108,20 +149,19 @@ from
         join
     WeeklyAggregation wa on extract(week from bp.created_at) = wa.week_number and extract(year from bp.created_at) = wa.year
 order by
-    wa.year, wa.week_number, bp.created_at
+    wa.week_number
 `
 
 type GetBlogPostsByCreatedAtRow struct {
-	ID            uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Title         string
-	Description   string
-	ImageFilename string
-	UserID        uuid.UUID
-	WeekNumber    string
-	Year          string
-	PostCount     int64
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Title       string
+	Description string
+	UserID      uuid.UUID
+	WeekNumber  string
+	Year        string
+	PostCount   int64
 }
 
 func (q *Queries) GetBlogPostsByCreatedAt(ctx context.Context) ([]GetBlogPostsByCreatedAtRow, error) {
@@ -139,7 +179,6 @@ func (q *Queries) GetBlogPostsByCreatedAt(ctx context.Context) ([]GetBlogPostsBy
 			&i.UpdatedAt,
 			&i.Title,
 			&i.Description,
-			&i.ImageFilename,
 			&i.UserID,
 			&i.WeekNumber,
 			&i.Year,
@@ -158,28 +197,86 @@ func (q *Queries) GetBlogPostsByCreatedAt(ctx context.Context) ([]GetBlogPostsBy
 	return items, nil
 }
 
-const getBlogPostsByUser = `-- name: GetBlogPostsByUser :many
-select id, created_at, updated_at, title, description, image_filename, user_id from blog_posts where user_id = $1
+const getBlogPostsByUserWithFiles = `-- name: GetBlogPostsByUserWithFiles :many
+select
+    blog_posts.id as blog_post_id,
+    blog_posts.created_at as blog_post_created_at,
+    blog_posts.updated_at as blog_post_updated_at,
+    blog_posts.title as blog_post_title,
+    blog_posts.description as blog_post_description,
+    files.id as file_id,
+    files.file_name,
+    files.folder_name
+from
+    blog_posts
+        join
+    blog_post_files on blog_posts.id = blog_post_files.blog_post_id
+        join
+    files on blog_post_files.file_id = files.id
+where
+        blog_posts.user_id = $1
 `
 
-func (q *Queries) GetBlogPostsByUser(ctx context.Context, userID uuid.UUID) ([]BlogPost, error) {
-	rows, err := q.db.QueryContext(ctx, getBlogPostsByUser, userID)
+type GetBlogPostsByUserWithFilesRow struct {
+	BlogPostID          uuid.UUID
+	BlogPostCreatedAt   time.Time
+	BlogPostUpdatedAt   time.Time
+	BlogPostTitle       string
+	BlogPostDescription string
+	FileID              uuid.UUID
+	FileName            string
+	FolderName          string
+}
+
+func (q *Queries) GetBlogPostsByUserWithFiles(ctx context.Context, userID uuid.UUID) ([]GetBlogPostsByUserWithFilesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getBlogPostsByUserWithFiles, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BlogPost
+	var items []GetBlogPostsByUserWithFilesRow
 	for rows.Next() {
-		var i BlogPost
+		var i GetBlogPostsByUserWithFilesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Description,
-			&i.ImageFilename,
-			&i.UserID,
+			&i.BlogPostID,
+			&i.BlogPostCreatedAt,
+			&i.BlogPostUpdatedAt,
+			&i.BlogPostTitle,
+			&i.BlogPostDescription,
+			&i.FileID,
+			&i.FileName,
+			&i.FolderName,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFilesByBlogPostID = `-- name: GetFilesByBlogPostID :many
+select files.id, files.file_name, files.folder_name
+from blog_post_files
+join files on blog_post_files.file_id = files.id
+where blog_post_files.blog_post_id = $1
+`
+
+func (q *Queries) GetFilesByBlogPostID(ctx context.Context, blogPostID uuid.UUID) ([]File, error) {
+	rows, err := q.db.QueryContext(ctx, getFilesByBlogPostID, blogPostID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []File
+	for rows.Next() {
+		var i File
+		if err := rows.Scan(&i.ID, &i.FileName, &i.FolderName); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

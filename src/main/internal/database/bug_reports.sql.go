@@ -13,19 +13,18 @@ import (
 )
 
 const createBugReport = `-- name: CreateBugReport :one
-INSERT INTO bug_reports (id, created_at, updated_at, title, description, image_filename, user_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, created_at, updated_at, title, description, image_filename, user_id
+INSERT INTO bug_reports (id, created_at, updated_at, title, description, user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, created_at, updated_at, title, description, user_id
 `
 
 type CreateBugReportParams struct {
-	ID            uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Title         string
-	Description   string
-	ImageFilename string
-	UserID        uuid.UUID
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Title       string
+	Description string
+	UserID      uuid.UUID
 }
 
 func (q *Queries) CreateBugReport(ctx context.Context, arg CreateBugReportParams) (BugReport, error) {
@@ -35,7 +34,6 @@ func (q *Queries) CreateBugReport(ctx context.Context, arg CreateBugReportParams
 		arg.UpdatedAt,
 		arg.Title,
 		arg.Description,
-		arg.ImageFilename,
 		arg.UserID,
 	)
 	var i BugReport
@@ -45,33 +43,76 @@ func (q *Queries) CreateBugReport(ctx context.Context, arg CreateBugReportParams
 		&i.UpdatedAt,
 		&i.Title,
 		&i.Description,
-		&i.ImageFilename,
 		&i.UserID,
 	)
 	return i, err
 }
 
-const getBugReports = `-- name: GetBugReports :many
-SELECT id, created_at, updated_at, title, description, image_filename, user_id FROM bug_reports
+const createBugReportFile = `-- name: CreateBugReportFile :one
+insert into bug_report_files (bug_report_id, file_id)
+values ($1, $2)
+returning bug_report_id, file_id
 `
 
-func (q *Queries) GetBugReports(ctx context.Context) ([]BugReport, error) {
+type CreateBugReportFileParams struct {
+	BugReportID uuid.UUID
+	FileID      uuid.UUID
+}
+
+func (q *Queries) CreateBugReportFile(ctx context.Context, arg CreateBugReportFileParams) (BugReportFile, error) {
+	row := q.db.QueryRowContext(ctx, createBugReportFile, arg.BugReportID, arg.FileID)
+	var i BugReportFile
+	err := row.Scan(&i.BugReportID, &i.FileID)
+	return i, err
+}
+
+const getBugReports = `-- name: GetBugReports :many
+select
+    bug_reports.id as bug_report_id,
+    bug_reports.created_at as bug_report_created_at,
+    bug_reports.updated_at as bug_report_updated_at,
+    bug_reports.title as bug_report_title,
+    bug_reports.description as bug_report_description,
+    files.id as file_id,
+    files.file_name,
+    files.folder_name
+from
+    bug_reports
+        join
+    bug_report_files on bug_reports.id = bug_report_files.bug_report_id
+        join
+    files on bug_report_files.file_id = files.id
+`
+
+type GetBugReportsRow struct {
+	BugReportID          uuid.UUID
+	BugReportCreatedAt   time.Time
+	BugReportUpdatedAt   time.Time
+	BugReportTitle       string
+	BugReportDescription string
+	FileID               uuid.UUID
+	FileName             string
+	FolderName           string
+}
+
+func (q *Queries) GetBugReports(ctx context.Context) ([]GetBugReportsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getBugReports)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BugReport
+	var items []GetBugReportsRow
 	for rows.Next() {
-		var i BugReport
+		var i GetBugReportsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Description,
-			&i.ImageFilename,
-			&i.UserID,
+			&i.BugReportID,
+			&i.BugReportCreatedAt,
+			&i.BugReportUpdatedAt,
+			&i.BugReportTitle,
+			&i.BugReportDescription,
+			&i.FileID,
+			&i.FileName,
+			&i.FolderName,
 		); err != nil {
 			return nil, err
 		}
@@ -86,27 +127,55 @@ func (q *Queries) GetBugReports(ctx context.Context) ([]BugReport, error) {
 	return items, nil
 }
 
-const getBugReportsByUser = `-- name: GetBugReportsByUser :many
-select id, created_at, updated_at, title, description, image_filename, user_id from bug_reports where user_id = $1
+const getBugReportsByUserWithFiles = `-- name: GetBugReportsByUserWithFiles :many
+select
+    bug_reports.id as bug_report_id,
+    bug_reports.created_at as bug_report_created_at,
+    bug_reports.updated_at as bug_report_updated_at,
+    bug_reports.title as bug_report_title,
+    bug_reports.description as bug_report_description,
+    files.id as file_id,
+    files.file_name,
+    files.folder_name
+from
+    bug_reports
+        join
+    bug_report_files on bug_reports.id = bug_report_files.bug_report_id
+        join
+    files on bug_report_files.file_id = files.id
+where
+        bug_reports.user_id = $1
 `
 
-func (q *Queries) GetBugReportsByUser(ctx context.Context, userID uuid.UUID) ([]BugReport, error) {
-	rows, err := q.db.QueryContext(ctx, getBugReportsByUser, userID)
+type GetBugReportsByUserWithFilesRow struct {
+	BugReportID          uuid.UUID
+	BugReportCreatedAt   time.Time
+	BugReportUpdatedAt   time.Time
+	BugReportTitle       string
+	BugReportDescription string
+	FileID               uuid.UUID
+	FileName             string
+	FolderName           string
+}
+
+func (q *Queries) GetBugReportsByUserWithFiles(ctx context.Context, userID uuid.UUID) ([]GetBugReportsByUserWithFilesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getBugReportsByUserWithFiles, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BugReport
+	var items []GetBugReportsByUserWithFilesRow
 	for rows.Next() {
-		var i BugReport
+		var i GetBugReportsByUserWithFilesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Description,
-			&i.ImageFilename,
-			&i.UserID,
+			&i.BugReportID,
+			&i.BugReportCreatedAt,
+			&i.BugReportUpdatedAt,
+			&i.BugReportTitle,
+			&i.BugReportDescription,
+			&i.FileID,
+			&i.FileName,
+			&i.FolderName,
 		); err != nil {
 			return nil, err
 		}
